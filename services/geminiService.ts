@@ -1,15 +1,6 @@
-
 import { GoogleGenAI } from "@google/genai";
 
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-  // In a real app, you might use a toast notification or a different UI to show this error.
-  // For this example, we'll throw an error.
-  throw new Error("API_KEY environment variable not set. Please set it to use the Gemini API.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const summarizeNote = async (note: string): Promise<string> => {
   if (!note.trim()) {
@@ -26,6 +17,8 @@ export const summarizeNote = async (note: string): Promise<string> => {
     return response.text;
   } catch (error) {
     console.error("Error summarizing note:", error);
-    return "Sorry, I couldn't summarize the note at this time. Please check your API key and try again later.";
+    // Re-throw the error to be handled by the component.
+    // This allows the UI to show a more specific error state.
+    throw new Error("Failed to connect to the summarization service. Please check your connection or try again later.");
   }
 };

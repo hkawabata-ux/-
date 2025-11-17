@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import type { NoteType } from '../types';
 import { NOTE_COLORS } from '../constants';
@@ -33,6 +32,9 @@ interface NoteProps {
   note: NoteType;
   onUpdate: (id: string, newProps: Partial<Omit<NoteType, 'id'>>) => void;
   onDelete: (id: string) => void;
+  onSelect: (id: string, isMultiSelect: boolean) => void;
+  isSelected: boolean;
+  groupPosition?: { x: number; y: number };
 }
 
 const ColorPicker: React.FC<{ onColorSelect: (color: string) => void }> = ({ onColorSelect }) => {
@@ -51,7 +53,7 @@ const ColorPicker: React.FC<{ onColorSelect: (color: string) => void }> = ({ onC
     )
 }
 
-export const Note: React.FC<NoteProps> = ({ note, onUpdate, onDelete }) => {
+export const Note: React.FC<NoteProps> = ({ note, onUpdate, onDelete, onSelect, isSelected, groupPosition }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [text, setText] = useState(note.text);
   const [zIndex, setZIndex] = useState(1);
@@ -97,6 +99,7 @@ export const Note: React.FC<NoteProps> = ({ note, onUpdate, onDelete }) => {
         return;
     }
     
+    e.stopPropagation();
     setZIndex(999);
 
     const startPos = { x: e.clientX, y: e.clientY };
@@ -113,7 +116,12 @@ export const Note: React.FC<NoteProps> = ({ note, onUpdate, onDelete }) => {
 
       if(hasDragged) {
         moveEvent.preventDefault();
-        noteRef.current!.style.transform = `translate(${startNotePos.x + dx}px, ${startNotePos.y + dy}px)`;
+        const newX = startNotePos.x + dx;
+        const newY = startNotePos.y + dy;
+        const newTransform = groupPosition 
+            ? `translate(${newX - groupPosition.x}px, ${newY - groupPosition.y}px)`
+            : `translate(${newX}px, ${newY}px)`;
+        noteRef.current!.style.transform = newTransform;
       }
     };
 
@@ -124,8 +132,9 @@ export const Note: React.FC<NoteProps> = ({ note, onUpdate, onDelete }) => {
       if(hasDragged) {
         const dx = upEvent.clientX - startPos.x;
         const dy = upEvent.clientY - startPos.y;
-        noteRef.current!.style.transform = '';
         onUpdate(note.id, { x: startNotePos.x + dx, y: startNotePos.y + dy });
+      } else {
+          onSelect(note.id, upEvent.metaKey || upEvent.ctrlKey);
       }
 
       setZIndex(1);
@@ -186,18 +195,22 @@ export const Note: React.FC<NoteProps> = ({ note, onUpdate, onDelete }) => {
         }
     };
 
+  const currentTransform = groupPosition
+    ? `translate(${note.x - groupPosition.x}px, ${note.y - groupPosition.y}px)`
+    : `translate(${note.x}px, ${note.y}px)`;
+
   return (
     <>
       <div 
         ref={noteRef}
         style={{
           position: 'absolute',
-          transform: `translate(${note.x}px, ${note.y}px)`,
+          transform: currentTransform,
           width: note.width,
           height: note.height,
           zIndex,
         }}
-        className={`group font-hand p-6 text-gray-200 shadow-xl shadow-black/30 rounded-lg backdrop-blur-md border border-white/10 transition-shadow duration-300 hover:shadow-2xl hover:shadow-black/50 ${note.color} flex flex-col cursor-grab active:cursor-grabbing`}
+        className={`group font-hand p-6 text-gray-200 shadow-xl shadow-black/30 rounded-lg backdrop-blur-md border border-white/10 transition-transform duration-300 hover:shadow-2xl hover:shadow-black/50 ${note.color} flex flex-col cursor-grab active:cursor-grabbing ${isSelected ? 'ring-2 ring-purple-400 ring-offset-2 ring-offset-black/20' : ''}`}
         onMouseDown={handleDragMouseDown}
       >
         <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity note-controls flex items-center space-x-2">
@@ -224,7 +237,7 @@ export const Note: React.FC<NoteProps> = ({ note, onUpdate, onDelete }) => {
           <ColorPicker onColorSelect={(color) => onUpdate(note.id, { color })} />
         </div>
 
-        <div className="flex-grow overflow-y-auto" onDoubleClick={() => setIsEditing(true)}>
+        <div className="flex-grow overflow-y-auto" onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
             {isEditing ? (
               <textarea
                 ref={textareaRef}
@@ -268,8 +281,8 @@ export const Note: React.FC<NoteProps> = ({ note, onUpdate, onDelete }) => {
                               <p className="mt-4 font-sans">Gemini is summarizing your note...</p>
                           </div>
                       ) : (
-                          <article className="prose prose-invert prose-sm sm:prose-base max-w-none">
-                              <p style={{whiteSpace: 'pre-wrap'}}>{summaryContent}</p>
+                          <article className="prose prose-invert prose-sm sm:prose-base max-w-none" style={{whiteSpace: 'pre-wrap'}}>
+                              {summaryContent}
                           </article>
                       )}
                   </div>

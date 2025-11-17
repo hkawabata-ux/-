@@ -1,0 +1,5 @@
+{
+  "name": "Gemini Sticky Notes",
+  "description": "A digital sticky note application to capture and organize your thoughts. It features the ability to summarize all your notes with a single click using the Gemini API.",
+  "requestFramePermissions": []
+}
